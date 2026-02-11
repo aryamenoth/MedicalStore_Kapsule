@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Kapsulez App</title>
+    
+    <!-- Google Fonts: Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-blue: #0056b3;
+            --brand-green: #059669;
+            --accent-orange: #F59E0B;
+            --bg-glass: rgba(255, 255, 255, 0.95);
+            --card-bg: #FFFFFF;
+            --text-dark: #1F2937;
+            --text-gray: #6B7280;
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+            --radius-lg: 20px;
+            --radius-md: 16px;
+            --bottom-nav-height: 70px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            background-color: #f3f4f6; /* Clean static background for app */
+            color: var(--text-dark); 
+            overflow: hidden; 
+            height: 100vh; width: 100vw;
+        }
+
+        /* --- BACKGROUND SLIDESHOW (Only for Doctors) --- */
+        /* Hidden by default, shown via JS when on Doctors tab */
+        #bg-slider {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; background-size: cover; background-position: center;
+            transition: opacity 0.8s ease-in-out; 
+            opacity: 0; /* Start hidden */
+            pointer-events: none;
+        }
+        #bg-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1; background: rgba(0, 0, 0, 0.6); 
+            opacity: 0; /* Sync with slider */
+            transition: opacity 0.8s ease-in-out;
+        }
+
+        /* --- APP STRUCTURE --- */
+        .app-container { display: flex; flex-direction: column; height: 100%; }
+
+        header { 
+            background: white; box-shadow: var(--shadow-sm); z-index: 1000; 
+            padding: 15px 20px; flex-shrink: 0;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .logo { font-size: 1.3rem; font-weight: 700; color: var(--primary-blue); display: flex; align-items: center; gap: 8px; }
+        .logo i { color: var(--brand-green); }
+
+        .app-content {
+            flex: 1; overflow-y: auto; overflow-x: hidden;
+            padding-bottom: calc(var(--bottom-nav-height) + 20px);
+            scroll-behavior: smooth;
+        }
+        .app-content::-webkit-scrollbar { display: none; }
+        .app-content { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            height: var(--bottom-nav-height);
+            background: white; box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            display: flex; justify-content: space-around; align-items: center;
+            z-index: 1000; padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: #9CA3AF; font-size: 0.75rem; gap: 4px; cursor: pointer; transition: 0.2s; width: 100%; height: 100%;
+        }
+        .nav-item i { font-size: 1.4rem; transition: 0.2s; }
+        .nav-item.active { color: var(--primary-blue); }
+        .nav-item.active i { transform: translateY(-2px); }
+
+        /* --- Animations --- */
+        .page-section { display: none; padding: 15px; animation: slideUp 0.3s ease-out; }
+        .page-section.active { display: block; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Components --- */
+        .btn { 
+            padding: 12px 24px; border-radius: 50px; font-weight: 600; cursor: pointer; 
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px; 
+            border: none; width: 100%; transition: 0.2s; font-size: 1rem; box-shadow: var(--shadow-sm);
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--primary-blue); color: white; }
+        .btn-green { background: var(--brand-green); color: white; }
+
+        /* Hero */
+        .hero {
+            background: white; border-radius: var(--radius-lg); padding: 30px 20px; text-align: center;
+            margin-bottom: 20px; box-shadow: var(--shadow-md); color: var(--text-dark);
+            border: 1px solid #eee;
+        }
+        .hero h1 { font-size: 1.6rem; margin-bottom: 5px; color: var(--primary-blue); }
+        .trust-badges { display: flex; justify-content: center; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
+        .t-badge { font-size: 0.75rem; background: rgba(0, 86, 179, 0.1); color: var(--primary-blue); padding: 4px 10px; border-radius: 8px; font-weight: 600; }
+        
+        /* Grids */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        
+        .card {
+            background: white; border-radius: var(--radius-md); padding: 15px;
+            box-shadow: var(--shadow-sm); text-align: center; cursor: pointer;
+            transition: 0.2s;
+        }
+        .card:active { transform: scale(0.95); }
+
+        /* Offer Card */
+        .offer-card { 
+            background: white; border-radius: var(--radius-md); padding: 15px; 
+            display: flex; gap: 15px; box-shadow: var(--shadow-sm); margin-bottom: 15px; 
+            position: relative;
+        }
+        .offer-img { width: 80px; height: 80px; object-fit: contain; }
+        .offer-details { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .buy-btn-mini {
+            background: #25D366; color: white; width: 35px; height: 35px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            position: absolute; bottom: 15px; right: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* Reviews */
+        .review-card {
+            background: white; border-radius: var(--radius-md); padding: 15px;
+            margin-bottom: 15px; box-shadow: var(--shadow-sm); border-left: 4px solid var(--accent-orange);
+        }
+        .stars { color: var(--accent-orange); font-size: 0.8rem; margin-bottom: 5px; }
+        .reviewer-name { font-weight: 600; font-size: 0.9rem; }
+        .review-text { font-size: 0.85rem; color: #555; margin-top: 5px; font-style: italic; }
+
+        /* Doctor Detail (Transparent for bg slideshow) */
+        .detail-card { 
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);
+            border-radius: var(--radius-lg); padding: 25px; text-align: center; box-shadow: var(--shadow-md); 
+            color: var(--text-dark);
+        }
+        .doc-img-lg { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--brand-green-light); margin-bottom: 15px; }
+        .fee-tag {
+            background: var(--accent-orange); color: white; padding: 5px 15px; 
+            border-radius: 20px; font-size: 0.9rem; font-weight: 600; display: inline-block; margin-top: 10px;
+        }
+        
+        /* Contact & Map */
+        .map-btn { background: #4285F4; color: white; margin-top: 10px; }
+        .static-map { width: 100%; height: 200px; border-radius: var(--radius-md); margin-top: 15px; overflow: hidden; }
+        
+        /* Feedback Form */
+        .feedback-form { background: white; padding: 20px; border-radius: var(--radius-md); margin-top: 20px; box-shadow: var(--shadow-sm); }
+        input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; margin-bottom: 10px; font-family: inherit; }
+        
+        /* Floaters */
+        .float-wa {
+            position: fixed; bottom: 85px; right: 20px; width: 55px; height: 55px;
+            background: #25D366; color: white; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 28px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 990;
+        }
+
+        /* Back Button */
+        .back-header { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; font-weight: 600; color: var(--text-dark); }
+        .back-header i { color: var(--primary-blue); }
+
+        /* Text adjustments for Slideshow visibility */
+        .text-light { color: white; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+        
+        /* Toast */
+        .toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px);
+            background: #333; color: white; padding: 12px 24px; border-radius: 50px; z-index: 2000;
+            transition: 0.3s; box-shadow: 0 5px 15px rgba(0,0,0,0.3); font-size: 0.9rem;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
+<body>
+
+    <!-- BACKGROUND SLIDESHOW (Only visible on Doctors Tab) -->
+    <div id="bg-slider"></div>
+    <div id="bg-overlay"></div>
+
+    <div class="app-container">
+        
+        <!-- Header -->
+        <header>
+            <div class="logo"><i class="fas fa-capsules"></i> Kapsulez</div>
+            <a href="tel:9496806007" style="font-size: 1.2rem; color: var(--primary-blue);"><i class="fas fa-phone-alt"></i></a>
+        </header>
+
+        <!-- Main Content -->
+        <div class="app-content">
+            
+            <!-- HOME SECTION (Static Background) -->
+            <div id="home" class="page-section active">
+                <div class="hero">
+                    <h1>Welcome to Kapsulez</h1>
+                    <p style="font-size: 0.9rem; color: #444; margin-bottom: 15px;">Athani's most trusted pharmacy.</p>
+                    
+                    <div class="trust-badges">
+                        <span class="t-badge"><i class="fas fa-check-circle"></i> Trusted 4+ Years</span>
+                        <span class="t-badge"><i class="fas fa-users"></i> 5000+ Customers</span>
+                        <span class="t-badge"><i class="fas fa-truck"></i> Fast Delivery</span>
+                    </div>
+                    
+                    <button onclick="switchTab('offers')" class="btn btn-primary">View Medicines & Offers</button>
+                </div>
+
+                <h3 style="margin-top: 20px; color: var(--text-dark);">Quick Services</h3>
+                <div class="grid-2" style="margin-bottom: 20px;">
+                    <div class="card" onclick="switchTab('doctors')" style="background: var(--brand-green); color: white;">
+                        <i class="fas fa-user-md" style="font-size: 1.5rem; margin-bottom: 5px;"></i>
+                        <div>Book Doctor</div>
+                    </div>
+                    <div class="card" onclick="switchTab('offers')">
+                        <i class="fas fa-pills" style="font-size: 1.5rem; color: var(--primary-blue); margin-bottom: 5px;"></i>
+                        <div>Order Meds</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DOCTORS SECTION (Slideshow Background Active Here) -->
+            <div id="doctors" class="page-section">
+                <div id="doc-level-1">
+                    <h3 class="text-light">Select Department</h3>
+                    <div class="grid-3" id="dept-grid" style="margin-top: 15px;"></div>
+                </div>
+
+                <div id="doc-level-2" style="display:none;">
+                    <div class="back-header text-light" onclick="showDocLevel(1)"><i class="fas fa-arrow-left"></i> Departments</div>
+                    <h3 id="dept-title" class="text-light" style="margin-bottom: 15px;">Doctors</h3>
+                    <div class="grid-2" id="doctor-grid"></div>
+                </div>
+
+                <div id="doc-level-3" style="display:none;">
+                    <div class="back-header text-light" onclick="showDocLevel(2)"><i class="fas fa-arrow-left"></i> Doctors</div>
+                    <div class="detail-card">
+                        <img id="d-img" src="" class="doc-img-lg">
+                        <h2 id="d-name" style="font-size: 1.4rem;">Name</h2>
+                        <p id="d-spec" style="color: var(--primary-blue); font-weight: 600;">Spec</p>
+                        
+                        <!-- Added Fee Display -->
+                        <div id="d-fee" class="fee-tag">Fee: --</div>
+                        
+                        <p id="d-exp" style="font-size: 0.9rem; color: #666; margin: 10px 0;">Exp</p>
+                        
+                        <button onclick="bookDoc()" class="btn btn-green" style="margin-top: 15px;">
+                            <i class="fab fa-whatsapp"></i> Book Appointment
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OFFERS SECTION (Static Background) -->
+            <div id="offers" class="page-section">
+                <div class="card" style="margin-bottom: 20px; background: #eef2ff; border: 1px solid #c7d2fe;">
+                    <h4 style="color: var(--primary-blue);"><i class="fas fa-info-circle"></i> How to Buy?</h4>
+                    <p style="font-size: 0.8rem; color: #555; margin-top: 5px;">Click the <i class="fab fa-whatsapp" style="color: #25D366;"></i> button on any product to order instantly via WhatsApp.</p>
+                </div>
+
+                <h3 style="color: var(--text-dark);">Current Offers</h3>
+                <div id="all-offers-list" style="margin-top: 15px;"></div>
+            </div>
+
+            <!-- STORE/CONTACT SECTION (Static Background) -->
+            <div id="store" class="page-section">
+                <!-- Reviews Moved Here -->
+                <h3 style="color: var(--text-dark);">Customer Reviews</h3>
+                <div id="reviews-list" style="margin-bottom: 20px;">
+                    <!-- Reviews injected via JS -->
+                </div>
+
+                <div class="card" style="text-align: left;">
+                    <h3 style="color: var(--primary-blue); margin-bottom: 15px;">Store Details</h3>
+                    <p style="margin-bottom: 10px;"><i class="fas fa-map-marker-alt" style="width: 20px; color: var(--brand-green);"></i> Darshana Arcade, Near Old Medical College, Athani, Thrissur</p>
+                    <p style="margin-bottom: 10px;"><i class="fas fa-phone" style="width: 20px; color: var(--brand-green);"></i> 9496806007</p>
+                    <p style="margin-bottom: 15px;"><i class="fas fa-clock" style="width: 20px; color: var(--brand-green);"></i> Mon-Sat: 9AM - 9PM</p>
+                    
+                    <button onclick="navigateToShop()" class="btn map-btn">
+                        <i class="fas fa-location-arrow"></i> Navigate to Shop
+                    </button>
+
+                    <div class="static-map">
+                        <iframe 
+                            src="https://www.google.com/maps?q=Old+Medical+College+Athani+Thrissur&output=embed" 
+                            width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy">
+                        </iframe>
+                    </div>
+                </div>
+
+                <!-- Feedback Form -->
+                <div class="feedback-form">
+                    <h3 style="margin-bottom: 15px; color: var(--text-dark);">Write a Review</h3>
+                    <input type="text" id="fb-name" placeholder="Your Name">
+                    <textarea id="fb-msg" rows="3" placeholder="Share your experience..."></textarea>
+                    <button class="btn btn-primary" onclick="submitFeedback()">Submit Review</button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <div class="nav-item active" onclick="switchTab('home')" id="nav-home">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('doctors')" id="nav-doctors">
+                <i class="fas fa-user-md"></i>
+                <span>Doctors</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('offers')" id="nav-offers">
+                <i class="fas fa-tags"></i>
+                <span>Offers</span>
+            </div>
+            <div class="nav-item" onclick="switchTab('store')" id="nav-store">
+                <i class="fas fa-store"></i>
+                <span>Store</span>
+            </div>
+        </nav>
+
+    </div>
+
+    <!-- Floating WhatsApp -->
+    <a href="https://wa.me/919496806007" class="float-wa"><i class="fab fa-whatsapp"></i></a>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">Message Sent!</div>
+
+    <script>
+        // --- CONFIGURATION: SHOP IMAGES ---
+        const shopImages = [
+            "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
+            "https://images.unsplash.com/photo-1631549916768-4119b2e5f926?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
+            "https://images.unsplash.com/photo-1579684385127-1ef15d508118?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80"
+        ];
+
+        // --- BACKGROUND SLIDESHOW LOGIC ---
+        let imgIndex = 0;
+        const bgSlider = document.getElementById('bg-slider');
+        const bgOverlay = document.getElementById('bg-overlay');
+
+        function changeBackground() {
+            // Only animate if visible (performance)
+            if(bgSlider.style.opacity === '1') {
+                bgSlider.style.opacity = 0.5; // Slight dip for transition
+                setTimeout(() => {
+                    bgSlider.style.backgroundImage = `url('${shopImages[imgIndex]}')`;
+                    bgSlider.style.opacity = 1;
+                }, 400);
+                imgIndex = (imgIndex + 1) % shopImages.length;
+            }
+        }
+        
+        // Set initial image
+        bgSlider.style.backgroundImage = `url('${shopImages[0]}')`;
+        // Timer
+        setInterval(changeBackground, 5000);
+
+        // --- DATA ---
+        const departments = [
+            { id: 1, name: "Cardiology", icon: "fa-heartbeat" },
+            { id: 2, name: "General", icon: "fa-user-md" },
+            { id: 3, name: "Pediatrics", icon: "fa-baby" },
+            { id: 4, name: "Skin", icon: "fa-hand-sparkles" },
+            { id: 5, name: "Bones", icon: "fa-bone" },
+            { id: 6, name: "Women", icon: "fa-female" }
+        ];
+
+        const doctors = [
+            { id: 101, deptId: 1, name: "Dr. Ravi Kumar", spec: "Cardiologist", exp: "15 Years", fee: "₹300", img: "https://picsum.photos/seed/doc1/200/200" },
+            { id: 102, deptId: 1, name: "Dr. Lakshmi", spec: "Cardiologist", exp: "10 Years", fee: "₹250", img: "https://picsum.photos/seed/doc2/200/200" },
+            { id: 103, deptId: 2, name: "Dr. Anjali", spec: "Physician", exp: "12 Years", fee: "₹200", img: "https://picsum.photos/seed/doc3/200/200" },
+            { id: 104, deptId: 3, name: "Dr. Sarah", spec: "Pediatrician", exp: "9 Years", fee: "₹200", img: "https://picsum.photos/seed/doc4/200/200" }
+        ];
+
+        const offers = [
+            { name: "Accu-Check Strips", price: "960", off: "20%", img: "https://picsum.photos/seed/med1/100/100" },
+            { name: "Protinex Junior", price: "425", off: "15%", img: "https://picsum.photos/seed/med2/100/100" },
+            { name: "N95 Mask Pack", price: "180", off: "10%", img: "https://picsum.photos/seed/med3/100/100" },
+            { name: "Vitamin C + Zinc", price: "350", off: "30%", img: "https://picsum.photos/seed/med4/100/100" },
+            { name: "Digital Thermometer", price: "225", off: "25%", img: "https://picsum.photos/seed/med5/100/100" }
+        ];
+
+        const reviews = [
+            { name: "Rahul M.", stars: 5, text: "Best medical shop in Athani! Very helpful staff and genuine medicines." },
+            { name: "Sneha K.", stars: 5, text: "Home delivery is super fast. Ordered medicines for my dad and got it in 30 mins." },
+            { name: "Arun P.", stars: 4, text: "Good collection of surgical items. Prices are reasonable compared to others." },
+            { name: "Mini S.", stars: 5, text: "Trusted shop for 4 years. They always remember my regular prescription." }
+        ];
+
+        let selectedDoc = null;
+
+        // --- NAVIGATION (Controls Slideshow Visibility) ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.getElementById('nav-' + tabId).classList.add('active');
+            
+            // CONTROL SLIDESHOW VISIBILITY
+            if(tabId === 'doctors') {
+                bgSlider.style.opacity = 1;
+                bgOverlay.style.opacity = 1;
+            } else {
+                bgSlider.style.opacity = 0;
+                bgOverlay.style.opacity = 0;
+            }
+
+            if(tabId !== 'doctors') showDocLevel(1);
+        }
+
+        // --- DOCTOR FLOW ---
+        function showDocLevel(level) {
+            document.getElementById('doc-level-1').style.display = (level === 1) ? 'block' : 'none';
+            document.getElementById('doc-level-2').style.display = (level === 2) ? 'block' : 'none';
+            document.getElementById('doc-level-3').style.display = (level === 3) ? 'block' : 'none';
+        }
+
+        function renderDepts() {
+            const grid = document.getElementById('dept-grid');
+            departments.forEach(d => {
+                grid.innerHTML += `
+                    <div class="card" onclick="filterDocs(${d.id}, '${d.name}')">
+                        <i class="fas ${d.icon}" style="font-size: 1.5rem; color: var(--primary-blue); margin-bottom:5px;"></i>
+                        <div style="font-size:0.8rem; font-weight:600;">${d.name}</div>
+                    </div>
+                `;
+            });
+        }
+
+        function filterDocs(deptId, name) {
+            document.getElementById('dept-title').innerText = name;
+            const grid = document.getElementById('doctor-grid');
+            grid.innerHTML = '';
+            doctors.filter(d => d.deptId === deptId).forEach(doc => {
+                grid.innerHTML += `
+                    <div class="card" onclick="showDocDetail(${doc.id})">
+                        <img src="${doc.img}" style="width:50px; height:50px; border-radius:50%; margin-bottom:5px;">
+                        <div style="font-size:0.85rem; font-weight:600;">${doc.name}</div>
+                        <div style="font-size:0.7rem; color:#666;">${doc.spec}</div>
+                    </div>
+                `;
+            });
+            showDocLevel(2);
+        }
+
+        function showDocDetail(id) {
+            selectedDoc = doctors.find(d => d.id === id);
+            document.getElementById('d-img').src = selectedDoc.img;
+            document.getElementById('d-name').innerText = selectedDoc.name;
+            document.getElementById('d-spec').innerText = selectedDoc.spec;
+            document.getElementById('d-exp').innerText = selectedDoc.exp + " Experience";
+            document.getElementById('d-fee').innerText = "Consultation Fee: " + selectedDoc.fee;
+            showDocLevel(3);
+        }
+
+        function bookDoc() {
+            // Requirement: Name, Age, Date
+            const msg = `Hello Kapsulez,%0A%0AI would like to book Dr. ${selectedDoc.name.split(' ')[1]}.%0AConsultation Fee: ${selectedDoc.fee}%0A%0APatient Details:%0AName: [Enter Name]%0AAge: [Enter Age]%0ADate: [Enter Date]%0A%0APlease confirm.`;
+            window.open(`https://wa.me/919496806007?text=${msg}`, '_blank');
+        }
+
+        // --- OFFERS & BUY LOGIC ---
+        function renderOffers() {
+            const createCard = (o) => `
+                <div class="offer-card">
+                    <img src="${o.img}" class="offer-img">
+                    <div class="offer-details">
+                        <div style="font-weight:600; font-size:0.9rem;">${o.name}</div>
+                        <div style="color:var(--brand-green); font-weight:700; margin-top:5px;">₹${o.price} 
+                            <span style="color:#999; font-size:0.75rem; text-decoration:line-through; font-weight:400;">₹1200</span>
+                        </div>
+                        <div style="color:var(--accent-orange); font-size:0.75rem; font-weight:600; margin-top:2px;">${o.off} OFF</div>
+                    </div>
+                    <button onclick="buyProduct('${o.name}')" class="buy-btn-mini">
+                        <i class="fab fa-whatsapp"></i>
+                    </button>
+                </div>
+            `;
+            document.getElementById('all-offers-list').innerHTML = offers.map(createCard).join('');
+        }
+
+        function buyProduct(productName) {
+            const msg = `Hello Kapsulez,%0A%0AI would like to buy: ${productName}.%0A%0APlease confirm availability and total amount.`;
+            window.open(`https://wa.me/919496806007?text=${msg}`, '_blank');
+        }
+
+        // --- REVIEWS (Now on Store Page) ---
+        function renderReviews() {
+            const list = document.getElementById('reviews-list');
+            reviews.forEach(r => {
+                let starsHtml = '';
+                for(let i=0; i<5; i++) {
+                    starsHtml += `<i class="fas fa-star" style="color: ${i < r.stars ? 'var(--accent-orange)' : '#ddd'}"></i>`;
+                }
+                list.innerHTML += `
+                    <div class="review-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div class="reviewer-name">${r.name}</div>
+                            <div class="stars">${starsHtml}</div>
+                        </div>
+                        <div class="review-text">"${r.text}"</div>
+                    </div>
+                `;
+            });
+        }
+
+        function submitFeedback() {
+            const name = document.getElementById('fb-name').value;
+            const msg = document.getElementById('fb-msg').value;
+            
+            if(name && msg) {
+                showToast("Thank you for your review!");
+                document.getElementById('fb-name').value = '';
+                document.getElementById('fb-msg').value = '';
+            } else {
+                showToast("Please fill all fields.");
+            }
+        }
+
+        function showToast(text) {
+            const t = document.getElementById('toast');
+            t.innerText = text;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        // --- MAP ---
+        function navigateToShop() {
+            const dest = "Kapsulez Medicals, Darshana Arcade, Athani, Thrissur";
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}`, '_blank');
+        }
+
+        // Init
+        renderDepts();
+        renderOffers();
+        renderReviews();
+    </script>
+</body>
+</html>
